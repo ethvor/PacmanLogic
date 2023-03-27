@@ -210,14 +210,14 @@ def atMostOne(literals):
     combs = itertools.combinations(literals, 2)
     listNegatedTuples = []
     for tuple in combs:
-        negtuple = [~p for p in tuple] #negate the tuple's elements and
+        negtuple = [~p for p in tuple]  # negate the tuple's elements and
 
-        negatedDisjoinedPhrase = disjoin(*negtuple) #make a new Phrase that is the negated elements of the original tuple
+        negatedDisjoinedPhrase = disjoin(
+            *negtuple)  # make a new Phrase that is the negated elements of the original tuple
 
-        listNegatedTuples.append(negatedDisjoinedPhrase) #makes a list of the negated phrases
+        listNegatedTuples.append(negatedDisjoinedPhrase)  # makes a list of the negated phrases
 
-    return conjoin(*listNegatedTuples) #conjoin each element of listNegatedtuples (* operator)
-
+    return conjoin(*listNegatedTuples)  # conjoin each element of listNegatedtuples (* operator)
 
     "*** END YOUR CODE HERE ***"
 
@@ -239,7 +239,7 @@ def exactlyOne(literals):
 
     disjLiterals = disjoin(*literals)
 
-    return conjoin(atMostOnePhrase,disjLiterals)
+    return conjoin(atMostOnePhrase, disjLiterals)
 
     "*** END YOUR CODE HERE ***"
 
@@ -354,17 +354,15 @@ def pacphysics_axioms(t, all_coords, non_outer_wall_coords):
 
     "*** BEGIN YOUR CODE HERE ***"
 
-    for (x,y) in all_coords:
+    for (x, y) in all_coords:
         pacphysics_sentences.append(PropSymbolExpr(wall_str, x, y) >> ~ PropSymbolExpr(pacman_str, x, y, t))
 
-
     allPossiblePositions = []
-    for (x,y) in non_outer_wall_coords:
+    for (x, y) in non_outer_wall_coords:
         allPossiblePositions.append(PropSymbolExpr(pacman_str, x, y, t))
 
     onePossibleLocation = exactlyOne(allPossiblePositions)
     pacphysics_sentences.append(onePossibleLocation)
-
 
     allPossibleDirections = []
     for direction in DIRECTIONS:
@@ -373,11 +371,9 @@ def pacphysics_axioms(t, all_coords, non_outer_wall_coords):
     onePossibleDirection = exactlyOne(allPossibleDirections)
     pacphysics_sentences.append(onePossibleDirection)
 
-
-   # print((pacphysics_sentences))
+    # print((pacphysics_sentences))
 
     return conjoin(pacphysics_sentences)
-
 
 
 def check_location_satisfiability(x1_y1, x0_y0, action0, action1, problem):
@@ -405,30 +401,29 @@ def check_location_satisfiability(x1_y1, x0_y0, action0, action1, problem):
 
     "*** BEGIN YOUR CODE HERE ***"
     loc_0 = PropSymbolExpr(pacman_str, x0, y0, 0)
-    axioms_0 = pacphysics_axioms(0,all_coords,non_outer_wall_coords)
+    axioms_0 = pacphysics_axioms(0, all_coords, non_outer_wall_coords)
     action_0 = PropSymbolExpr(action0, 0)
-    successoraxioms_0 = allLegalSuccessorAxioms(1,walls_grid,non_outer_wall_coords)
-    axioms_1 = pacphysics_axioms(1,all_coords,non_outer_wall_coords)
+    successoraxioms_0 = allLegalSuccessorAxioms(1, walls_grid, non_outer_wall_coords)
+    axioms_1 = pacphysics_axioms(1, all_coords, non_outer_wall_coords)
     action_1 = PropSymbolExpr(action1, 1)
 
     KB.append(PropSymbolExpr(pacman_str, x0, y0, 0))
-    KB.append(pacphysics_axioms(0,all_coords,non_outer_wall_coords))
+    KB.append(pacphysics_axioms(0, all_coords, non_outer_wall_coords))
     KB.append(PropSymbolExpr(action0, 0))
-    KB.append(allLegalSuccessorAxioms(1,walls_grid,non_outer_wall_coords))
-    KB.append(pacphysics_axioms(1,all_coords,non_outer_wall_coords))
+    KB.append(allLegalSuccessorAxioms(1, walls_grid, non_outer_wall_coords))
+    KB.append(pacphysics_axioms(1, all_coords, non_outer_wall_coords))
     KB.append(PropSymbolExpr(action1, 1))
 
-    #print(KB)
+    # print(KB)
     KBconj = conjoin(*KB)
 
     model1sentence = conjoin(KBconj, ~PropSymbolExpr(pacman_str, x1, y1, 1))
     model2sentence = conjoin(KBconj, PropSymbolExpr(pacman_str, x1, y1, 1))
 
-
     model1 = findModel(model1sentence)
     model2 = findModel(model2sentence)
 
-    models = (model1,model2)
+    models = (model1, model2)
     return models
     "*** END YOUR CODE HERE ***"
 
@@ -455,67 +450,59 @@ def positionLogicPlan(problem):
 
     "*** BEGIN YOUR CODE HERE ***"
 
-    non_outer_wall_coords = list(itertools.product(range(1, problem.getWidth() + 1), range(1, problem.getHeight() + 1)))
+    initial_loc_Expr = PropSymbolExpr(pacman_str, x0, y0, 0)
+    KB.append(initial_loc_Expr)
 
-    initial_loc = PropSymbolExpr(pacman_str, x0, y0, 0)
-    KB.append(initial_loc)
-
+    successors = []
     for t in range(50):
+        print(f"t = {t}")
+
+        list_expr_coords_t = []
+        for (x, y) in non_wall_coords:  # one loc at timestep t
+            list_expr_coords_t.append(PropSymbolExpr(pacman_str, x, y, t))
+
+        exactOneLocT = exactlyOne(list_expr_coords_t)
+        KB.append(exactOneLocT)
+
+        if t != 0:  # it terminates if successors are found at zero i think
+            for (x, y) in non_wall_coords:
+                successors.append(pacmanSuccessorStateAxioms(x, y, t, walls_grid=problem.walls))
+
+            print("FOUND SUCCESSORS")
+            if successors != None and len(successors) != 0:
+                succesors_Expr = conjoin(*successors)
+
+            KB.append(succesors_Expr)
+
+            goal_coords = problem.goal
+            a, b = goal_coords
+            goal_assert_expr_t = PropSymbolExpr(pacman_str, a, b, t)
 
 
-        axioms = pacphysics_axioms(t,all_coords,non_outer_wall_coords)
+            possibleActions = []
+            # exactly one action
+            for action in actions:
+                if t != 0:
+                    possibleActions.append(PropSymbolExpr(action, t - 1))
 
-        KB.append(axioms)
+            oneActionExpr = conjoin(exactlyOne(possibleActions))
+            KB.append(oneActionExpr)
 
-        legal_locs = []
-        for coord in non_wall_coords:
-            x,y = coord
-            ok_loc = PropSymbolExpr(pacman_str,x,y,t)
-            legal_locs.append(ok_loc)
+            KBconj = conjoin(KB)
+            model = findModel(conjoin(KBconj,goal_assert_expr_t))
 
-        legal_locs_disj = disjoin(*legal_locs) #pacman's location must be this legal loc OR this legal loc OR ...
+        if t == 0:
+            goal_coord_0 = problem.goal
+            g, h = goal_coord_0
+            goal_0_Expr = PropSymbolExpr(pacman_str, g, h, 0)
+            goal_successor = pacmanSuccessorStateAxioms(g, h, 0, walls_grid=problem.walls)
+            goal_full_Expr = conjoin(goal_0_Expr, goal_successor)
+            model = findModel(conjoin(initial_loc_Expr, exactOneLocT, goal_full_Expr))
+            print("TIME ZERO MODEL")
 
-        KB.append(legal_locs_disj)
-
-        exactly_one_legal_loc = exactlyOne(legal_locs) #pacmans location must be EXACTLY ONE legal loc and not more than one
-
-        KB.append(exactly_one_legal_loc)
-
-
-
-        KB_conj = conjoin(*KB)
-        model_to_test = findModel(KB_conj)
-
-        if(model_to_test):
-            list_actions = extractActionSequence(model_to_test,actions)
-            return list_actions
-
-        list_actions = []
-        for action in actions:
-            someaction = PropSymbolExpr(action, t)
-            list_actions.append(someaction)
-
-        exactly_one_action = exactlyOne(list_actions)
-
-        KB.append(exactly_one_action)
-
-        list_successors = []
-        for location in non_outer_wall_coords:
-            x,y = location
-            successor = pacmanSuccessorStateAxioms(x,y,t,walls_grid=problem.walls)
-            list_successors.append(successor)
-
-        sentence_successors = conjoin(*list_successors)
-
-        KB.append(sentence_successors)
-
-
-
-
-
-
-
-
+        if model:
+            actionSeq = extractActionSequence(model, actions)
+            return actionSeq
 
     "*** END YOUR CODE HERE ***"
 
