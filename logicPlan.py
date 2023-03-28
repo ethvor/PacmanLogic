@@ -519,7 +519,7 @@ def foodLogicPlan(problem):
     walls_list = walls.asList()
     (x0, y0), food = problem.start
     food = food.asList()
-
+    print(food)
     # Get lists of possible locations (i.e. without walls) and possible actions
     all_coords = list(itertools.product(range(width + 2), range(height + 2)))
 
@@ -530,7 +530,73 @@ def foodLogicPlan(problem):
     KB = []
 
     "*** BEGIN YOUR CODE HERE ***"
-    raise NotImplementedError
+    initial_loc_Expr = PropSymbolExpr(pacman_str, x0, y0, 0)
+    KB.append(initial_loc_Expr)
+
+    successors = []
+    for t in range(50):
+        print(f"t = {t}")
+
+        list_expr_coords_t = []
+        for (x, y) in non_wall_coords:  # one loc at timestep t
+            list_expr_coords_t.append(PropSymbolExpr(pacman_str, x, y, t))
+
+        exactOneLocT = exactlyOne(list_expr_coords_t)
+        KB.append(exactOneLocT)
+
+        if t != 0:  #case where time is NOT zero ie 1-49
+
+            for (x, y) in non_wall_coords:
+                successors.append(pacmanSuccessorStateAxioms(x, y, t, walls_grid=problem.walls))
+
+            print("FOUND SUCCESSORS")
+            if successors != None and len(successors) != 0:
+                succesors_Expr = conjoin(*successors)
+
+            KB.append(succesors_Expr)
+
+
+
+
+
+            possibleActions = []
+            # exactly one action
+            for action in actions:
+                if t != 0:
+                    possibleActions.append(PropSymbolExpr(action, t - 1))
+
+            oneActionExpr = conjoin(exactlyOne(possibleActions))
+            KB.append(oneActionExpr)
+
+            KBconj = conjoin(KB)
+
+            consumed_food = []
+            for (x, y) in food:
+                assert_pacman_at_food_expr = []
+                for up_to_t in range(0, t):
+                    assert_pacman_at_food_expr.append(PropSymbolExpr(pacman_str, x, y, up_to_t))
+                assert_pacman_at_food_expr_disj = disjoin(assert_pacman_at_food_expr)
+                consumed_food.append(assert_pacman_at_food_expr_disj)
+            assert_consumed_food_t = conjoin(consumed_food)
+            assert_sentence = conjoin(KBconj, assert_consumed_food_t)
+            model = findModel(assert_sentence)
+
+        if t == 0: #case where time is 0
+
+            consumed_food = []
+            for (x,y) in food:
+                consumed_food.append(PropSymbolExpr(pacman_str, x, y, t))
+            assert_consumed_food_0 = conjoin(consumed_food)
+            assert_sentence = conjoin(initial_loc_Expr, exactOneLocT, assert_consumed_food_0)
+            model = findModel(assert_sentence)
+
+
+
+            print("TIME ZERO MODEL")
+
+        if model:
+            actionSeq = extractActionSequence(model, actions)
+            return actionSeq
     "*** END YOUR CODE HERE ***"
 
 
